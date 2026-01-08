@@ -1,0 +1,59 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install rsync
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/zynact_deploy_key
+          chmod 600 ~/.ssh/zynact_deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy code to server
+        run: |
+          rsync -avz --delete -e "ssh -i ~/.ssh/zynact_deploy_key" \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/development/docsign/
+
+      - name: Updating environment variables
+        run: |
+          ssh -i ~/.ssh/zynact_deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOSSH
+          cd /home/development/docsign
+
+            echo "Creating .env file"
+                    cat > .env << EOENV
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          PORT=${{ vars.PORT }}
+
+          EOENV
+          EOSSH
+
+      - name: Deploying with docker
+        run: |
+          ssh -i ~/.ssh/zynact_deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd /home/development/docsign
+            docker compose down
+            docker system prune -f
+            docker compose up -d --build
+            docker compose ps
+          EOF

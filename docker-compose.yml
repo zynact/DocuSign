@@ -1,0 +1,20 @@
+services:
+  inkra:
+    build: .
+    container_name: inkra
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      PORT: ${PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      TZ: Asia/Kolkata
+    volumes:
+      - inkra-db:/app/data
+      - inkra-docs:/app/docs
+    restart: unless-stopped
+
+volumes:
+  inkra-db:
+  inkra-docs:
