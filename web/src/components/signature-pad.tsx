@@ -53,14 +53,25 @@ export const SignaturePad = forwardRef<SignaturePadRef, SignaturePadProps>(
 
         const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    setUploadedImage(event.target?.result as string);
+            if (!file || !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const image = new Image();
+                image.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = image.naturalWidth;
+                    canvas.height = image.naturalHeight;
+                    const context = canvas.getContext("2d");
+                    if (!context) return;
+                    context.drawImage(image, 0, 0);
+                    // Normalize WebP/JPEG/etc. to a PNG that the Go backend can decode.
+                    setUploadedImage(canvas.toDataURL("image/png"));
+                    setMode("upload");
                     onChange?.(true);
                 };
-                reader.readAsDataURL(file);
-            }
+                image.src = reader.result as string;
+            };
+            reader.readAsDataURL(file);
         };
 
         return (

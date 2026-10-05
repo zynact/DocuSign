@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {deleteDoc, getDoc, getFileUrl} from "@/lib/api";
+import {createSigningSession, deleteDoc, getDoc, getDocumentFields, getFileUrl, replaceDocumentFields} from "@/lib/api";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
@@ -32,6 +32,7 @@ import {
     Trash2,
     User,
 } from "lucide-react";
+import {PdfFieldEditor} from "@/components/pdf-field-editor";
 
 export default function AdminViewDocPage() {
     const {"doc-id": docId} = useParams<{ "doc-id": string }>();
@@ -46,6 +47,12 @@ export default function AdminViewDocPage() {
         enabled: !!docId,
     });
 
+    const {data: fieldsData} = useQuery({
+        queryKey: ["document-fields", docId],
+        queryFn: () => getDocumentFields(docId!),
+        enabled: !!docId && !isLoading,
+    });
+
     const deleteMutation = useMutation({
         mutationFn: () => deleteDoc(docId!),
         onSuccess: () => {
@@ -54,12 +61,28 @@ export default function AdminViewDocPage() {
         },
     });
 
-    const doc = data?.data;
+    const fieldsMutation = useMutation({
+        mutationFn: (field: NonNullable<typeof fieldsData>["data"][number]) => replaceDocumentFields(docId!, [field]),
+        onSuccess: () => queryClient.invalidateQueries({queryKey: ["document-fields", docId]}),
+    });
 
-    const signingLink = new URL(`/doc/sign/${docId}`, window.location.origin).toString();
+    const doc = data?.data;
+    const signatureField = fieldsData?.data.find((field) => field.type === "signature");
+
+    const [signingLink, setSigningLink] = useState<string | null>(null);
+    const sessionMutation = useMutation({
+        mutationFn: () => createSigningSession(docId!),
+        onSuccess: (result) => setSigningLink(new URL(`/doc/sign/${result.token}`, window.location.origin).toString()),
+    });
 
     const copyLink = async () => {
-        await navigator.clipboard.writeText(signingLink);
+        let link = signingLink;
+        if (!link) {
+            const result = await sessionMutation.mutateAsync();
+            link = new URL(`/doc/sign/${result.token}`, window.location.origin).toString();
+            setSigningLink(link);
+        }
+        await navigator.clipboard.writeText(link);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -135,6 +158,23 @@ export default function AdminViewDocPage() {
                             </div>
                         </CardContent>
                     </Card>
+                    {!doc.isSigned && signatureField && (
+                        <Card className="mt-6">
+                            <CardHeader>
+                                <CardTitle className="text-base">Signature field placement</CardTitle>
+                                <CardDescription>Place the field directly over the signature line before sharing the document.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <PdfFieldEditor
+                                    fileUrl={getFileUrl(doc.originalPath)}
+                                    initialField={signatureField}
+                                    saving={fieldsMutation.isPending}
+                                    onSave={(field) => fieldsMutation.mutate(field)}
+                                />
+                                {fieldsMutation.isError && <p className="mt-2 text-sm text-destructive">Could not save the signature position.</p>}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Sidebar */}
@@ -153,9 +193,9 @@ export default function AdminViewDocPage() {
                         <CardContent>
                             <div className="flex gap-2">
                                 <code className="flex-1 px-3 py-2 bg-muted rounded text-xs truncate">
-                                    {signingLink}
+                                    {signingLink || "Generate a secure signing link"}
                                 </code>
-                                <Button size="sm" variant="outline" onClick={copyLink}>
+                                <Button size="sm" variant="outline" onClick={copyLink} disabled={sessionMutation.isPending || doc.isSigned}>
                                     {copied ? (
                                         <Check className="h-4 w-4 text-green-500"/>
                                     ) : (

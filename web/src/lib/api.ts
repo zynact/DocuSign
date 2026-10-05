@@ -1,5 +1,5 @@
 import ApiInstance from "./axios";
-import type { GetAllDocsResponse, GetDocResponse, GetDocsParams } from "@/types";
+import type { DocumentField, GetAllDocsResponse, GetDocResponse, GetDocsParams, SigningSessionResponse } from "@/types";
 
 // Get all documents with pagination and filtering
 export async function getDocs(params?: GetDocsParams): Promise<GetAllDocsResponse> {
@@ -51,6 +51,35 @@ export async function signDoc(
 // Get the base URL for static file paths
 export function getFileUrl(path: string): string {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-    console.log("Base URL:", baseUrl);
-    return new URL(path, baseUrl).toString();
+    return new URL(path.replaceAll("\\", "/"), baseUrl).toString();
+}
+
+export async function createSigningSession(id: string, expiryHours = 168): Promise<{ session: SigningSessionResponse["session"]; token: string; url: string }> {
+    const response = await ApiInstance.post(`/api/docs/${id}/signing-sessions`, { expiryHours });
+    return response.data.data;
+}
+
+export async function getSigningSession(token: string): Promise<{ data: SigningSessionResponse; success: boolean }> {
+    const response = await ApiInstance.get(`/api/signing-sessions/${token}`);
+    return response.data;
+}
+
+export async function completeSigningSession(token: string, payload: {
+    signerName: string;
+    remarks: string;
+    signature: { type: "drawn" | "uploaded"; imageData: string };
+    fields: { fieldId: string; value: string }[];
+}): Promise<{ success: boolean }> {
+    const response = await ApiInstance.post(`/api/signing-sessions/${token}/complete`, payload);
+    return response.data;
+}
+
+export async function replaceDocumentFields(id: string, fields: DocumentField[]): Promise<{ success: boolean }> {
+    const response = await ApiInstance.put(`/api/docs/${id}/fields`, fields);
+    return response.data;
+}
+
+export async function getDocumentFields(id: string): Promise<{ data: DocumentField[]; success: boolean }> {
+    const response = await ApiInstance.get(`/api/docs/${id}/fields`);
+    return response.data;
 }

@@ -15,8 +15,13 @@ func DocsRoutes(r chi.Router) {
 		r.Post("/docs", controllers.CreateDoc)
 		r.Put("/docs/{id}", controllers.UpdateDoc)
 		r.Delete("/docs/{id}", controllers.DeleteDoc)
+		r.Post("/docs/{id}/signing-sessions", controllers.CreateSigningSession)
+		r.Put("/docs/{id}/fields", controllers.ReplaceFields)
+		r.Get("/docs/{id}/fields", controllers.GetFields)
 	})
 
 	r.Get("/docs/view/{id}", controllers.ViewDoc)
 	r.Post("/docs/sign/{id}", controllers.SignDoc)
+	r.Get("/signing-sessions/{token}", controllers.GetSigningSession)
+	r.Post("/signing-sessions/{token}/complete", controllers.CompleteSigningSession)
 }

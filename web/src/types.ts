@@ -53,3 +53,22 @@ export interface GetDocsParams {
     keyword?: string;
     signed?: "true" | "false";
 }
+
+export interface DocumentField {
+    id: string;
+    documentId: string;
+    type: "signature" | "name" | "date" | "text";
+    pageNumber: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    required: boolean;
+    label?: string;
+}
+
+export interface SigningSessionResponse {
+    session: { id: string; documentId: string; status: string; expiresAt: string };
+    document: { id: string; title: string; description: string; originalPath: string; originalName: string };
+    fields: DocumentField[];
+}

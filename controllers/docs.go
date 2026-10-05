@@ -76,6 +76,7 @@ func GetAllDocs(w http.ResponseWriter, r *http.Request) {
 		    is_signed,
 		    signed_at,
 		    signed_by_metadata,
+		    remarks,
 		    signed_by_ip,
 		    ip_whitelist,
 		    deleted_at,
@@ -163,6 +164,7 @@ func GetAllDocs(w http.ResponseWriter, r *http.Request) {
 			&doc.IsSigned,
 			&doc.SignedAt,
 			&doc.SignedByMetadata,
+			&doc.Remarks,
 			&doc.SignedByIp,
 			&ipJson,
 			&doc.DeletedAt,
@@ -440,7 +442,7 @@ func DeleteDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleteRes, deleteErr := database.DB.Exec(`UPDATE DOCUMENTS SET deleted = 1 WHERE id = ?`, id)
+	deleteRes, deleteErr := database.DB.Exec(`UPDATE DOCUMENTS SET deleted = 1, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted = 0`, id)
 
 	if deleteErr != nil {
 		lib.ErrorJSON(w, http.StatusInternalServerError, "Could not delete document")
@@ -480,10 +482,12 @@ func SignDoc(w http.ResponseWriter, r *http.Request) {
 
 	if doc.Deleted {
 		lib.ErrorJSON(w, http.StatusBadRequest, "Document is deleted")
+		return
 	}
 
 	if doc.IsSigned {
 		lib.ErrorJSON(w, http.StatusBadRequest, "Document is already signed")
+		return
 	}
 
 	ip := lib.GetClientIP(r)
@@ -539,12 +543,14 @@ func SignDoc(w http.ResponseWriter, r *http.Request) {
 	if updateErr != nil {
 		fmt.Println("Error updating document", updateErr)
 		lib.ErrorJSON(w, http.StatusInternalServerError, "Could not update document")
+		return
 	}
 
 	_, updateErr = exec.RowsAffected()
 
 	if updateErr != nil {
 		lib.ErrorJSON(w, http.StatusInternalServerError, "No rows affected")
+		return
 	}
 
 	lib.SuccessJSON(w, http.StatusOK, "Signed document")
