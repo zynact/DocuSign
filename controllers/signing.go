@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -100,6 +101,7 @@ func GetFields(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSigningSession(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	token := chi.URLParam(r, "token")
 	session, err := database.GetSigningSession(token)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -110,12 +112,24 @@ func GetSigningSession(w http.ResponseWriter, r *http.Request) {
 		lib.ErrorJSON(w, http.StatusInternalServerError, "Could not get signing session")
 		return
 	}
-	if session.Status != "pending" && session.Status != "in_progress" {
+	if time.Now().After(session.ExpiresAt) || (session.Status != "pending" && session.Status != "in_progress" && session.Status != "completed") {
 		lib.ErrorJSON(w, http.StatusGone, "This signing link is no longer active")
 		return
 	}
 	doc, err := database.GetDocByID(session.DocumentID)
-	if err != nil || doc.Deleted || doc.IsSigned {
+	if err != nil || doc.Deleted {
+		lib.ErrorJSON(w, http.StatusGone, "This document is no longer available for signing")
+		return
+	}
+	if session.Status == "completed" && doc.IsSigned && doc.SignedPath != nil && *doc.SignedPath != "" {
+		lib.SuccessJSON(w, http.StatusOK, map[string]any{
+			"session":  session,
+			"document": map[string]any{"id": doc.Id, "title": doc.Title, "description": doc.Description, "originalPath": doc.OriginalPath, "originalName": doc.OriginalName},
+			"fields":   []database.DocumentField{},
+		})
+		return
+	}
+	if doc.IsSigned || session.Status == "completed" {
 		lib.ErrorJSON(w, http.StatusGone, "This document is no longer available for signing")
 		return
 	}
@@ -133,6 +147,46 @@ func GetSigningSession(w http.ResponseWriter, r *http.Request) {
 		"document": map[string]any{"id": doc.Id, "title": doc.Title, "description": doc.Description, "originalPath": doc.OriginalPath, "originalName": doc.OriginalName},
 		"fields":   fields,
 	})
+}
+
+// A completed signing token grants access to its signed copy until the link expires.
+func DownloadSignedDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	session, err := database.GetSigningSession(chi.URLParam(r, "token"))
+	if errors.Is(err, sql.ErrNoRows) {
+		lib.ErrorJSON(w, http.StatusNotFound, "Signing link not found")
+		return
+	}
+	if err != nil {
+		lib.ErrorJSON(w, http.StatusInternalServerError, "Could not get signing session")
+		return
+	}
+	if session.Status != "completed" || time.Now().After(session.ExpiresAt) {
+		lib.ErrorJSON(w, http.StatusGone, "The signed document is not available for this link")
+		return
+	}
+	doc, err := database.GetDocByID(session.DocumentID)
+	if err != nil || doc.Deleted || !doc.IsSigned || doc.SignedPath == nil || *doc.SignedPath == "" {
+		lib.ErrorJSON(w, http.StatusGone, "The signed document is no longer available")
+		return
+	}
+	file, err := os.Open(*doc.SignedPath)
+	if err != nil {
+		lib.ErrorJSON(w, http.StatusNotFound, "The signed PDF could not be found")
+		return
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || info.IsDir() {
+		lib.ErrorJSON(w, http.StatusNotFound, "The signed PDF could not be found")
+		return
+	}
+	name := strings.TrimSuffix(filepath.Base(doc.OriginalName), filepath.Ext(doc.OriginalName)) + "-signed.pdf"
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	http.ServeContent(w, r, name, info.ModTime(), file)
 }
 
 func CompleteSigningSession(w http.ResponseWriter, r *http.Request) {

@@ -103,10 +103,10 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="max-w-lg">
+            <AlertDialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        <Upload className="h-5 w-5" />
+                        <Upload className="h-5 w-5 text-[#087443]" />
                         Upload Document
                     </AlertDialogTitle>
                     <AlertDialogDescription>
@@ -120,8 +120,8 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                         className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragActive
                                 ? "border-primary bg-primary/5"
                                 : file
-                                    ? "border-green-500 bg-green-500/5"
-                                    : "border-border hover:border-muted-foreground"
+                                    ? "border-primary bg-secondary/50"
+                                    : "border-primary/30 bg-secondary/30 hover:border-primary"
                             }`}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
@@ -130,18 +130,20 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                     >
                         <input
                             type="file"
+                            aria-label="Choose a PDF document"
                             accept=".pdf,application/pdf"
                             onChange={handleFileChange}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                         {file ? (
                             <div className="flex items-center justify-center gap-2">
-                                <FileUp className="h-5 w-5 text-green-500" />
-                                <span className="text-sm font-medium">{file.name}</span>
+                                <FileUp className="h-5 w-5 shrink-0 text-[#087443]" />
+                                <span className="text-sm font-medium break-all">{file.name}</span>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
+                                    aria-label="Remove selected PDF"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setFile(null);

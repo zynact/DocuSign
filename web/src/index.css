@@ -6,33 +6,33 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.141 0.005 285.823);
+    --background: #f5f8f6;
+    --foreground: #172d24;
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.141 0.005 285.823);
+    --card-foreground: #172d24;
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.141 0.005 285.823);
-    --primary: oklch(0.488 0.243 264.376);
-    --primary-foreground: oklch(0.97 0.014 254.604);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.967 0.001 286.375);
-    --muted-foreground: oklch(0.552 0.016 285.938);
-    --accent: oklch(0.967 0.001 286.375);
-    --accent-foreground: oklch(0.21 0.006 285.885);
+    --popover-foreground: #172d24;
+    --primary: #0B9D5C;
+    --primary-foreground: #032719;
+    --secondary: #eaf4ee;
+    --secondary-foreground: #246146;
+    --muted: #eef3f0;
+    --muted-foreground: #64756c;
+    --accent: #eaf4ee;
+    --accent-foreground: #175a39;
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.92 0.004 286.32);
-    --input: oklch(0.92 0.004 286.32);
-    --ring: oklch(0.705 0.015 286.067);
-    --chart-1: oklch(0.809 0.105 251.813);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.546 0.245 262.881);
-    --chart-4: oklch(0.488 0.243 264.376);
-    --chart-5: oklch(0.424 0.199 265.638);
-    --radius: 0;
+    --border: #dfe8e2;
+    --input: #d5e1d9;
+    --ring: #0B9D5C;
+    --chart-1: #b8e3cb;
+    --chart-2: #48ba83;
+    --chart-3: #0B9D5C;
+    --chart-4: #087443;
+    --chart-5: #145334;
+    --radius: 0.875rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
-    --sidebar-primary: oklch(0.546 0.245 262.881);
+    --sidebar-primary: #0B9D5C;
     --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
     --sidebar-accent: oklch(0.967 0.001 286.375);
     --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
@@ -47,8 +47,8 @@
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.21 0.006 285.885);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.42 0.18 266);
-    --primary-foreground: oklch(0.97 0.014 254.604);
+    --primary: #0B9D5C;
+    --primary-foreground: #032719;
     --secondary: oklch(0.274 0.006 286.033);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.274 0.006 286.033);
@@ -59,14 +59,14 @@
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.552 0.016 285.938);
-    --chart-1: oklch(0.809 0.105 251.813);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.546 0.245 262.881);
-    --chart-4: oklch(0.488 0.243 264.376);
-    --chart-5: oklch(0.424 0.199 265.638);
+    --chart-1: #b8e3cb;
+    --chart-2: #48ba83;
+    --chart-3: #0B9D5C;
+    --chart-4: #087443;
+    --chart-5: #145334;
     --sidebar: oklch(0.21 0.006 285.885);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.623 0.214 259.815);
+    --sidebar-primary: #0B9D5C;
     --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
     --sidebar-accent: oklch(0.274 0.006 286.033);
     --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -126,4 +126,21 @@
   html {
     @apply font-sans;
     }
+}
+@layer base {
+  body { margin: 0; min-width: 320px; -webkit-font-smoothing: antialiased; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+  ::selection { background: #0b9d5c26; }
+}
+@layer components {
+  .workspace-container { width: 100%; max-width: 1280px; margin-inline: auto; padding-inline: 1rem; }
+  .eyebrow { color: #087443; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .status-signed { background: #e6f6ed; color: #17603e; border: 1px solid #c8e9d6; }
+  .status-pending { background: #fff7e7; color: #865b14; border: 1px solid #f1dfb6; }
+  .document-card { height: 100%; transition: border-color 160ms, box-shadow 160ms; }
+  .document-card:hover { box-shadow: 0 8px 28px #163c2410; border-color: #0b9d5c70; }
+  .document-stage { background: #e9eeeb; padding: 0.5rem; border-radius: 0.875rem; }
+  .signature-surface { background-image: linear-gradient(to right, #dfe8e2 50%, transparent 50%); background-size: 10px 1px; background-repeat: repeat-x; background-position: center 72%; }
+  @media (min-width: 640px) { .workspace-container { padding-inline: 2rem; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
 }

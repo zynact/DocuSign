@@ -77,23 +77,25 @@ export const SignaturePad = forwardRef<SignaturePadRef, SignaturePadProps>(
         return (
             <div className="space-y-3">
                 {/* Mode Toggle */}
-                <div className="flex gap-2">
+                <div className="flex gap-1 rounded-xl bg-muted p-1">
                     <Button
                         type="button"
-                        variant={mode === "draw" ? "default" : "outline"}
+                        variant={mode === "draw" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setMode("draw")}
-                        className="gap-2"
+                        className={`flex-1 gap-2 ${mode === "draw" ? "bg-card shadow-xs text-[#087443]" : "text-muted-foreground"}`}
+                        aria-pressed={mode === "draw"}
                     >
                         <Pencil className="h-4 w-4" />
                         Draw
                     </Button>
                     <Button
                         type="button"
-                        variant={mode === "upload" ? "default" : "outline"}
+                        variant={mode === "upload" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setMode("upload")}
-                        className="gap-2"
+                        className={`flex-1 gap-2 ${mode === "upload" ? "bg-card shadow-xs text-[#087443]" : "text-muted-foreground"}`}
+                        aria-pressed={mode === "upload"}
                     >
                         <Upload className="h-4 w-4" />
                         Upload
@@ -102,7 +104,7 @@ export const SignaturePad = forwardRef<SignaturePadRef, SignaturePadProps>(
 
                 {/* Canvas or Upload Area */}
                 {mode === "draw" ? (
-                    <div className="border-2 border-dashed rounded-lg bg-white relative">
+                    <div className="signature-surface border border-dashed border-primary/40 rounded-xl bg-white relative">
                         <SignatureCanvas
                             ref={canvasRef}
                             canvasProps={{
@@ -148,10 +150,10 @@ export const SignaturePad = forwardRef<SignaturePadRef, SignaturePadProps>(
                 {/* Clear Button */}
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={handleClear}
-                    className="gap-2"
+                    className="gap-2 text-muted-foreground"
                 >
                     <Eraser className="h-4 w-4" />
                     Clear

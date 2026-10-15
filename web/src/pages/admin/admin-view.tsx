@@ -28,6 +28,7 @@ import {
     Globe,
     Loader2,
     MessageSquare,
+    PenLine,
     Tag,
     Trash2,
     User,
@@ -40,6 +41,7 @@ export default function AdminViewDocPage() {
     const queryClient = useQueryClient();
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [placementDocId, setPlacementDocId] = useState<string | null>(null);
 
     const {data, isLoading, isError} = useQuery({
         queryKey: ["doc", docId],
@@ -63,11 +65,15 @@ export default function AdminViewDocPage() {
 
     const fieldsMutation = useMutation({
         mutationFn: (field: NonNullable<typeof fieldsData>["data"][number]) => replaceDocumentFields(docId!, [field]),
-        onSuccess: () => queryClient.invalidateQueries({queryKey: ["document-fields", docId]}),
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({queryKey: ["document-fields", docId]});
+            setPlacementDocId(null);
+        },
     });
 
     const doc = data?.data;
     const signatureField = fieldsData?.data.find((field) => field.type === "signature");
+    const editingPosition = !doc?.isSigned && placementDocId === docId && !!signatureField;
 
     const [signingLink, setSigningLink] = useState<string | null>(null);
     const sessionMutation = useMutation({
@@ -114,34 +120,35 @@ export default function AdminViewDocPage() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="workspace-container py-6 sm:py-8">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                 <Button variant="ghost" size="sm" onClick={() => navigate("/admin")}>
                     <ArrowLeft className="h-4 w-4 mr-2"/>
-                    Back
+                    All documents
                 </Button>
+                <p className="eyebrow">Document overview</p>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
                 {/* PDF Preview */}
-                <div className="lg:col-span-2">
+                <div className="min-w-0">
                     <Card>
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-xl">{doc.title}</CardTitle>
-                                    <CardDescription className="mt-1">
+                                    <CardTitle className="text-xl tracking-tight break-words">{doc.title}</CardTitle>
+                                    <CardDescription className="mt-1 break-all">
                                         {doc.originalName}
                                     </CardDescription>
                                 </div>
                                 {doc.isSigned ? (
-                                    <Badge className="gap-1 bg-green-600">
+                                    <Badge variant="outline" className="status-signed gap-1">
                                         <CheckCircle2 className="h-3 w-3"/>
                                         Signed
                                     </Badge>
                                 ) : (
-                                    <Badge variant="secondary" className="gap-1">
+                                    <Badge variant="outline" className="status-pending gap-1">
                                         <Clock className="h-3 w-3"/>
                                         Pending
                                     </Badge>
@@ -149,42 +156,62 @@ export default function AdminViewDocPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="border rounded-lg overflow-hidden bg-muted aspect-[4/5]">
-                                <iframe
-                                    src={getFileUrl(doc.isSigned && doc.signedPath ? doc.signedPath : doc.originalPath)}
-                                    className="w-full h-full"
-                                    title={doc.title}
-                                />
+                            {!doc.isSigned && signatureField && !editingPosition && (
+                                <div className="mb-4 flex justify-end">
+                                    <Button
+                                        variant="secondary"
+                                        className="gap-2"
+                                        aria-expanded={editingPosition}
+                                        aria-controls="document-preview"
+                                        disabled={fieldsMutation.isPending}
+                                        onClick={() => {
+                                            fieldsMutation.reset();
+                                            setPlacementDocId(docId!);
+                                        }}
+                                    >
+                                        <PenLine className="h-4 w-4"/>
+                                        Add signature position
+                                    </Button>
+                                </div>
+                            )}
+                            <div id="document-preview">
+                                {editingPosition && signatureField ? (
+                                    <div className="space-y-3">
+                                        <PdfFieldEditor
+                                            key={doc.id}
+                                            fileUrl={getFileUrl(doc.originalPath)}
+                                            initialField={signatureField}
+                                            saving={fieldsMutation.isPending}
+                                            onCancel={() => {
+                                                fieldsMutation.reset();
+                                                setPlacementDocId(null);
+                                            }}
+                                            onSave={(field) => fieldsMutation.mutate(field)}
+                                        />
+                                        {fieldsMutation.isError && <p role="alert" className="text-sm text-destructive">Could not save the signature position. Please try again.</p>}
+                                    </div>
+                                ) : (
+                                    <div className="document-stage border overflow-hidden aspect-4/5">
+                                        <iframe
+                                            src={getFileUrl(doc.isSigned && doc.signedPath ? doc.signedPath : doc.originalPath)}
+                                            className="w-full h-full rounded-lg bg-white"
+                                            title={doc.title}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
-                    {!doc.isSigned && signatureField && (
-                        <Card className="mt-6">
-                            <CardHeader>
-                                <CardTitle className="text-base">Signature field placement</CardTitle>
-                                <CardDescription>Place the field directly over the signature line before sharing the document.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <PdfFieldEditor
-                                    fileUrl={getFileUrl(doc.originalPath)}
-                                    initialField={signatureField}
-                                    saving={fieldsMutation.isPending}
-                                    onSave={(field) => fieldsMutation.mutate(field)}
-                                />
-                                {fieldsMutation.isError && <p className="mt-2 text-sm text-destructive">Could not save the signature position.</p>}
-                            </CardContent>
-                        </Card>
-                    )}
                 </div>
 
                 {/* Sidebar */}
                 <div className="space-y-4">
                     {/* Shareable Link */}
-                    <Card>
+                    <Card className="border-primary/25 bg-linear-to-b from-secondary/60 to-card">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <ExternalLink className="h-4 w-4"/>
-                                Shareable Link
+                                Ready to share
                             </CardTitle>
                             <CardDescription>
                                 Send this link to your client for signing
@@ -195,7 +222,7 @@ export default function AdminViewDocPage() {
                                 <code className="flex-1 px-3 py-2 bg-muted rounded text-xs truncate">
                                     {signingLink || "Generate a secure signing link"}
                                 </code>
-                                <Button size="sm" variant="outline" onClick={copyLink} disabled={sessionMutation.isPending || doc.isSigned}>
+                                <Button size="sm" variant="outline" aria-label={copied ? "Signing link copied" : "Copy signing link"} title="Copy signing link" onClick={copyLink} disabled={sessionMutation.isPending || doc.isSigned}>
                                     {copied ? (
                                         <Check className="h-4 w-4 text-green-500"/>
                                     ) : (
@@ -270,9 +297,9 @@ export default function AdminViewDocPage() {
 
                     {/* Signature Info (if signed) */}
                     {doc.isSigned && (
-                        <Card className="border-green-500/50">
+                        <Card className="border-primary/25">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base flex items-center gap-2 text-green-600">
+                                <CardTitle className="text-base flex items-center gap-2 text-[#087443]">
                                     <CheckCircle2 className="h-4 w-4"/>
                                     Signature Details
                                 </CardTitle>
@@ -326,9 +353,9 @@ export default function AdminViewDocPage() {
                     )}
 
                     {/* Actions */}
-                    <Card className="border-destructive/50">
+                    <Card className="border-destructive/15 shadow-none">
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+                            <CardTitle className="text-base">Document actions</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Button

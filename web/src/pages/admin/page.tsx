@@ -9,6 +9,7 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {UploadDialog} from "@/components/upload-dialog";
 import {
     AlertCircle,
+    ArrowUpRight,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
@@ -50,13 +51,14 @@ export default function AdminPage() {
     const totalPages = Math.ceil(total / limit);
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="workspace-container py-8 sm:py-10">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold">Documents</h1>
+                    <p className="eyebrow mb-2">Your workspace</p>
+                    <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Documents</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage your PDF documents and signatures
+                        Keep your documents organized. Get signatures in a few simple steps.
                     </p>
                 </div>
                 <Button onClick={() => setUploadOpen(true)} className="gap-2">
@@ -66,7 +68,7 @@ export default function AdminPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-8 rounded-2xl border bg-card p-4">
                 <form onSubmit={(e) => {
                     e.preventDefault();
                 }} className="flex-1 flex gap-2">
@@ -74,6 +76,7 @@ export default function AdminPage() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
                         <Input
                             placeholder="Search documents..."
+                            aria-label="Search documents"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-10"
@@ -84,19 +87,20 @@ export default function AdminPage() {
                     </Button>
                 </form>
 
-                <div className="flex gap-2">
+                <div className="flex gap-1 rounded-xl bg-muted p-1">
                     {(["all", "unsigned", "signed"] as const).map((filter) => (
                         <Button
                             key={filter}
-                            variant={signedFilter === filter ? "default" : "outline"}
+                            variant={signedFilter === filter ? "secondary" : "ghost"}
                             size="sm"
                             onClick={() => {
                                 setSignedFilter(filter);
                                 setPage(1);
                             }}
-                            className="capitalize cursor-pointer"
+                            className={`flex-1 px-4 ${signedFilter === filter ? "bg-card shadow-xs text-[#087443]" : "text-muted-foreground"}`}
+                            aria-pressed={signedFilter === filter}
                         >
-                            {filter}
+                            {filter === "all" ? "All documents" : filter === "unsigned" ? "Pending" : "Signed"}
                         </Button>
                     ))}
                 </div>
@@ -111,7 +115,7 @@ export default function AdminPage() {
 
             {/* Error State */}
             {isError && (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card py-20 px-6 text-center">
                     <AlertCircle className="h-12 w-12 text-destructive mb-4"/>
                     <h2 className="text-lg font-semibold">Failed to load documents</h2>
                     <p className="text-muted-foreground">
@@ -122,8 +126,8 @@ export default function AdminPage() {
 
             {/* Empty State */}
             {!isLoading && !isError && docs.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground mb-4"/>
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card py-20 px-6 text-center">
+                    <div className="mb-5 flex size-16 items-center justify-center rounded-2xl bg-secondary"><FileText className="size-7 text-[#087443]"/></div>
                     <h2 className="text-lg font-semibold">No documents found</h2>
                     <p className="text-muted-foreground mb-4">
                         {search
@@ -142,15 +146,23 @@ export default function AdminPage() {
             {/* Document Grid */}
             {!isLoading && !isError && docs.length > 0 && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
+                        <p>{total} {total === 1 ? "document" : "documents"}{signedFilter !== "all" ? ` · ${signedFilter === "unsigned" ? "Pending signature" : "Signed"}` : " in your workspace"}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
                         {docs.map((doc) => (
                             <Link to={`/admin/view/${doc.id}`} key={doc.id}
-                                  className="cursor-pointer hover:shadow-lg hover:outline-primary hover:outline-1 transition-shadow">
+                                  className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4">
                                 <Card
                                     key={doc.id}
+                                    className="document-card"
                                     // onClick={() => navigate(`/admin/view/${doc.id}`)}
                                 >
                                     <CardHeader className="pb-3">
+                                        <div className="mb-5 flex items-center justify-between">
+                                            <div className="flex size-12 items-center justify-center rounded-xl bg-secondary text-[#087443]"><FileText className="size-6"/></div>
+                                            <ArrowUpRight className="size-4 text-muted-foreground transition-colors group-hover:text-[#087443]"/>
+                                        </div>
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex-1 min-w-0">
                                                 <CardTitle className="text-base truncate">
@@ -161,12 +173,12 @@ export default function AdminPage() {
                                                 </CardDescription>
                                             </div>
                                             {doc.isSigned ? (
-                                                <Badge variant="default" className="shrink-0 gap-1 bg-green-600">
+                                                <Badge variant="outline" className="status-signed shrink-0 gap-1">
                                                     <CheckCircle2 className="h-3 w-3"/>
                                                     Signed
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="shrink-0 gap-1">
+                                                <Badge variant="outline" className="status-pending shrink-0 gap-1">
                                                     <Clock className="h-3 w-3"/>
                                                     Pending
                                                 </Badge>
@@ -186,7 +198,8 @@ export default function AdminPage() {
                                                 </Badge>
                                             )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="border-t pt-4 text-xs text-muted-foreground">
+                                            Added {" "}
                                             {new Date(doc.createdAt).toLocaleDateString("en-US", {
                                                 year: "numeric",
                                                 month: "short",
@@ -205,6 +218,7 @@ export default function AdminPage() {
                             <Button
                                 variant="outline"
                                 size="sm"
+                                aria-label="Previous page"
                                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                                 disabled={page === 1}
                             >
@@ -216,6 +230,7 @@ export default function AdminPage() {
                             <Button
                                 variant="outline"
                                 size="sm"
+                                aria-label="Next page"
                                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
                             >

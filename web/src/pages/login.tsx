@@ -9,6 +9,7 @@ import {useNavigate} from "react-router";
 import ApiInstance from "@/lib/axios.ts";
 import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
 import {AlertCircle, Loader2} from "lucide-react";
+import {Brand} from "@/components/brand";
 
 const loginSchema = z.object({
     email: z.email("Invalid email address"),
@@ -49,14 +50,17 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle className="text-2xl">PDF Sign Manager</CardTitle>
-                    <CardDescription>Sign in to your account to manage documents</CardDescription>
+        <div className="flex min-h-screen flex-col bg-linear-to-br from-secondary via-background to-background">
+            <header className="workspace-container py-6"><Brand /></header>
+            <main className="flex flex-1 items-center justify-center px-4 pb-16">
+            <Card className="w-full max-w-md shadow-lg shadow-primary/5 sm:p-2">
+                <CardHeader className="pb-2">
+                    <p className="eyebrow mb-3">Welcome back</p>
+                    <CardTitle className="text-3xl tracking-tight">Sign in to Inkra</CardTitle>
+                    <CardDescription>Your documents and signatures, all in one place.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                         {error && (
                             <Alert variant="destructive">
                                 <AlertCircle className="h-4 w-4" />
@@ -65,14 +69,14 @@ export default function LoginPage() {
                         )}
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Email</label>
-                            <Input {...register("email")} type="email" placeholder="you@example.com" className="bg-input" />
+                            <label htmlFor="email" className="text-sm font-medium text-foreground">Email address</label>
+                            <Input id="email" {...register("email")} type="email" autoComplete="username" placeholder="you@example.com" />
                             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Password</label>
-                            <Input {...register("password")} type="password" placeholder="••••••••" className="bg-input" />
+                            <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+                            <Input id="password" autoComplete="current-password" {...register("password")} type="password" placeholder="••••••••" className="bg-card" />
                             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
                         </div>
 
@@ -89,6 +93,7 @@ export default function LoginPage() {
                     </form>
                 </CardContent>
             </Card>
+            </main>
         </div>
     )
 }

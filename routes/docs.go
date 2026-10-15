@@ -23,5 +23,6 @@ func DocsRoutes(r chi.Router) {
 	r.Get("/docs/view/{id}", controllers.ViewDoc)
 	r.Post("/docs/sign/{id}", controllers.SignDoc)
 	r.Get("/signing-sessions/{token}", controllers.GetSigningSession)
+	r.Get("/signing-sessions/{token}/download", controllers.DownloadSignedDocument)
 	r.Post("/signing-sessions/{token}/complete", controllers.CompleteSigningSession)
 }
