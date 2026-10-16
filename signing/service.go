@@ -18,6 +18,9 @@ import (
 	"github.com/fbn776/inkra/database"
 	"github.com/google/uuid"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 	xdraw "golang.org/x/image/draw"
 )
 
@@ -53,7 +56,11 @@ func RenderTextPDF(inputPath, outputPath, text string, field database.DocumentFi
 		return err
 	}
 	desc := fmt.Sprintf("pos:bl, off:%s %s, points:12, scale:1 abs, rot:0", strconv.FormatFloat(field.X, 'f', 2, 64), strconv.FormatFloat(field.Y, 'f', 2, 64))
-	return api.AddTextWatermarksFile(inputPath, outputPath, []string{strconv.Itoa(field.PageNumber)}, true, text, desc, nil)
+	wm, err := api.TextWatermark(text, desc, true, false, types.POINTS)
+	if err != nil {
+		return err
+	}
+	return addSigningWatermark(inputPath, outputPath, field.PageNumber, wm)
 }
 
 func decodeImage(dataURL string) ([]byte, error) {
@@ -179,5 +186,75 @@ func RenderSignedPDF(originalPath, outputPath string, field database.DocumentFie
 		return err
 	}
 	desc := fmt.Sprintf("pos:bl, off:%s %s, scale:1 abs, rot:0", strconv.FormatFloat(field.X, 'f', 2, 64), strconv.FormatFloat(field.Y, 'f', 2, 64))
-	return api.AddImageWatermarksFile(originalPath, outputPath, []string{strconv.Itoa(field.PageNumber)}, true, imagePath, desc, nil)
+	wm, err := api.ImageWatermark(imagePath, desc, true, false, types.POINTS)
+	if err != nil {
+		return err
+	}
+	return addSigningWatermark(originalPath, outputPath, field.PageNumber, wm)
+}
+
+func addSigningWatermark(inputPath, outputPath string, pageNumber int, wm *model.Watermark) error {
+	input, err := os.Open(inputPath)
+	if err != nil {
+		return err
+	}
+	defer input.Close()
+	conf := model.NewDefaultConfiguration()
+	conf.Cmd = model.ADDWATERMARKS
+	conf.OptimizeDuplicateContentStreams = false
+	ctx, err := api.ReadContext(input, conf)
+	if err != nil {
+		return err
+	}
+	if err := validateSigningContext(ctx); err != nil {
+		return err
+	}
+	if pageNumber < 1 || pageNumber > ctx.PageCount {
+		return fmt.Errorf("signature page %d is outside the document's %d pages", pageNumber, ctx.PageCount)
+	}
+	if conf.Optimize {
+		if err := api.OptimizeContext(ctx); err != nil {
+			return err
+		}
+	}
+	if err := pdfcpu.CacheFormFonts(ctx); err != nil {
+		return err
+	}
+	if err := pdfcpu.AddWatermarks(ctx, types.IntSet{pageNumber: true}, wm); err != nil {
+		return err
+	}
+	output, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	if err := api.Write(ctx, output, conf); err != nil {
+		_ = output.Close()
+		_ = os.Remove(outputPath)
+		return err
+	}
+	return output.Close()
+}
+
+func validateSigningContext(ctx *model.Context) error {
+	// pdfcpu v0.11 rejects C2PA's registered AFRelationship name. Temporarily
+	// use an accepted name only for validation; restore the original metadata
+	// before optimizing or writing. All other PDF validation still runs.
+	var manifests []types.Dict
+	for _, entry := range ctx.Table {
+		if entry.Free {
+			continue
+		}
+		if dict, ok := entry.Object.(types.Dict); ok {
+			if name := dict.NameEntry("AFRelationship"); name != nil && *name == "C2PA_Manifest" {
+				manifests = append(manifests, dict)
+				dict["AFRelationship"] = types.Name("Unspecified")
+			}
+		}
+	}
+	defer func() {
+		for _, dict := range manifests {
+			dict["AFRelationship"] = types.Name("C2PA_Manifest")
+		}
+	}()
+	return api.ValidateContext(ctx)
 }

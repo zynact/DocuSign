@@ -11,6 +11,25 @@ export function fieldTop(field: PdfFieldRectangle, pageHeight: number) {
   return pageHeight - field.y - field.height;
 }
 
+// Keep the top-left position when transferring to a differently sized page.
+export function fitPdfFieldToPage<T extends PdfFieldRectangle>(
+  field: T,
+  previousPageHeight: number,
+  pageWidth: number,
+  pageHeight: number,
+): T {
+  const width = Math.min(field.width, pageWidth);
+  const height = Math.min(field.height, pageHeight);
+  const top = clamp(fieldTop(field, previousPageHeight), 0, pageHeight - height);
+  return {
+    ...field,
+    width,
+    height,
+    x: clamp(field.x, 0, pageWidth - width),
+    y: pageHeight - top - height,
+  };
+}
+
 export function movePdfField<T extends PdfFieldRectangle>(
   field: T,
   dx: number,

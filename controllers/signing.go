@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -245,6 +246,7 @@ func CompleteSigningSession(w http.ResponseWriter, r *http.Request) {
 	}
 	signedPath := filepath.Join("./docs/signed", "signed_"+uuid.NewString()+".pdf")
 	if err := signing.RenderSignedPDF(doc.OriginalPath, signedPath, signatureField, sig); err != nil {
+		log.Printf("Generate signed PDF for document %s: %v", doc.Id, err)
 		lib.ErrorJSON(w, http.StatusInternalServerError, "Could not generate signed PDF")
 		return
 	}
@@ -256,6 +258,7 @@ func CompleteSigningSession(w http.ResponseWriter, r *http.Request) {
 		}
 		nextPath := filepath.Join("./docs/signed", "signed_"+uuid.NewString()+".pdf")
 		if err := signing.RenderTextPDF(currentPath, nextPath, values[f.ID], f); err != nil {
+			log.Printf("Render text field %s for document %s: %v", f.ID, doc.Id, err)
 			_ = os.Remove(currentPath)
 			lib.ErrorJSON(w, http.StatusInternalServerError, "Could not generate signed PDF")
 			return

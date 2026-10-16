@@ -20,6 +20,7 @@ import { AlertCircle, CheckCircle2, Download, FileText, Loader2, Mail, PenLine, 
 import { Brand } from "@/components/brand";
 import { SignaturePad, type SignaturePadRef } from "@/components/signature-pad";
 import { useRef, useState } from "react";
+import { isAxiosError } from "axios";
 
 export default function SignDocPage() {
   const { "doc-id": token } = useParams<{ "doc-id": string }>();
@@ -160,7 +161,9 @@ export default function SignDocPage() {
             </div>
             {mutation.isError && (
               <p className="text-sm text-destructive">
-                {mutation.error.message}
+                {isAxiosError<{ message?: string }>(mutation.error)
+                  ? mutation.error.response?.data?.message || "Could not submit the signed document. Please try again."
+                  : mutation.error.message}
               </p>
             )}
             <Button
